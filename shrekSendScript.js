@@ -1,25 +1,60 @@
-async function enviarScript(scriptText){
-	const lines = scriptText.split(/[\n\t]+/).map(line => line.trim()).filter(line => line);
-	main = document.querySelector("#main"),
-	textarea = main.querySelector(`div[contenteditable="true"]`)
-	
-	if(!textarea) throw new Error("No hay una conversación abierta")
-	
-	for(const line of lines){
-		console.log(line)
-	
-		textarea.focus();
-		document.execCommand('insertText', false, line);
-		textarea.dispatchEvent(new Event('change', {bubbles: true}));
-	
-		setTimeout(() => {
-			(main.querySelector(`[data-testid="send"]`) || main.querySelector(`[data-icon="send"]`)).click();
-		}, 100);
-		
-		if(lines.indexOf(line) !== lines.length - 1) await new Promise(resolve => setTimeout(resolve, 250));
-	}
-	
-	return lines.length;
+async function enviarScript(scriptText) {
+  const lines = scriptText
+    .split(/\n/)
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  const getInput = () =>
+    document.querySelector('[contenteditable="true"][data-tab="10"]') ||
+    document.querySelector('[contenteditable="true"]');
+
+  const getSendButton = () =>
+    document.querySelector('button[aria-label="Enviar"]') ||
+    document.querySelector('button[aria-label="Send"]') ||
+    document.querySelector('[data-icon="send"]');
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  const input = getInput();
+  if (!input) throw new Error("No hay conversación abierta");
+
+  for (const line of lines) {
+    input.focus();
+
+    // Limpia el input
+    input.innerHTML = "";
+
+    // Inserta texto correctamente (React friendly)
+    const event = new InputEvent("input", {
+      bubbles: true,
+      cancelable: true,
+      inputType: "insertText",
+      data: line
+    });
+
+    input.textContent = line;
+    input.dispatchEvent(event);
+
+    await sleep(150);
+
+    const sendBtn = getSendButton();
+
+    if (sendBtn) {
+      sendBtn.click();
+    } else {
+      // fallback: simular Enter
+      input.dispatchEvent(new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "Enter",
+        code: "Enter"
+      }));
+    }
+
+    await sleep(400);
+  }
+
+  return lines.length;
 }
 
 enviarScript(`
